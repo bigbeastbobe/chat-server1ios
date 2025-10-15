@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Group Chat Room</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .connection-status {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 999;
+        }
+        
+        .connected {
+            background: #4ECDC4;
+            color: white;
+        }
+        
+        .disconnected {
+            background: #FF6B6B;
+            color: white;
+            animation: blink 1s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.5; }
+        }
+        
+        .login-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .login-card {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            width: 100%;
+        }
+        
+        .login-card h1 {
+            margin-bottom: 10px;
+            text-align: center;
+            color: #333;
+        }
+        
+        .server-input-group {
+            margin-bottom: 20px;
+        }
+        
+        .server-input-group label {
+            display: block;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .server-input-group input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+        
+        .role-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .role-btn {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .role-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        
+        .login-input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        .login-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .login-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        .login-btn:hover {
+            transform: scale(1.02);
+        }
+        
+        .login-error {
+            color: #FF6B6B;
+            text-align: center;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+        
+        .container {
+            display: none;
+            flex-direction: column;
+            gap: 20px;
+            width: 100%;
+            max-width: 1400px;
+            height: 100vh;
+        }
+        
+        .top-bar {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .user-info {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .user-role {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+        }
+        
+        .logout-btn {
+            padding: 8px 16px;
+            background: #FF6B6B;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        .main-content {
+            display: flex;
+            gap: 20px;
+            flex: 1;
+            min-height: 0;
+        }
+        
+        .chat-window {
+            flex: 2;
+            background: white;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+        
+        .chat-header {
+            padding: 15px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .message-group {
+            display: flex;
+            gap: 8px;
+            align-items: flex-end;
+            margin-bottom: 4px;
+        }
+        
+        .sender-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+            flex-shrink: 0;
+            background: #667eea;
+        }
+        
+        .message-content {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            max-width: 60%;
+        }
+        
+        .sender-name {
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 2px;
+            color: #667eea;
+        }
+        
+        .message {
+            padding: 10px 15px;
+            border-radius: 8px;
+            word-wrap: break-word;
+            font-size: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            background: #E8EEFA;
+            color: #333;
+        }
+        
+        .message-text {
+            word-wrap: break-word;
+        }
+        
+        .message-time {
+            font-size: 12px;
+            opacity: 0.7;
+        }
+        
+        .message-status {
+            font-size: 11px;
+            opacity: 0.6;
+            margin-top: 2px;
+        }
+        
+        .sidebar {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .sidebar-panel {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .panel-header {
+            padding: 12px 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: bold;
+        }
+        
+        .panel-content {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+        }
+        
+        .input-section {
+            padding: 15px;
+            background: #f5f5f5;
+            border-top: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .input-controls {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .input-controls input {
+            flex: 1;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+        }
+        
+        .input-controls input:focus {
+            border-color: #667eea;
+        }
+        
+        .input-controls button {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        .password-input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .password-input-group select,
+        .password-input-group button {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 12px;
+            background: white;
+            cursor: pointer;
+        }
+        
+        .password-input-group button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            font-weight: bold;
+        }
+        
+        .password-list, .user-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-size: 12px;
+        }
+        
+        .password-item, .user-item {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 6px;
+        }
+        
+        .password-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .password-code {
+            font-weight: bold;
+            font-family: monospace;
+            background: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+        
+        .user-name {
+            font-weight: bold;
+        }
+        
+        .user-role-badge {
+            font-size: 11px;
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-top: 4px;
+            font-weight: bold;
+            color: white;
+            background: #667eea;
+        }
+        
+        .user-item
+    </style>
+</head>
+<body>
+    <div class="connection-status disconnected" id="connectionStatus">🔴 Connecting...</div>
+
+    <div class="login-screen" id="loginScreen">
+        <div class="login-card">
+            <h1>Group Chat</h1>
+            <div class="server-input-group">
+                <label>Server Address (e.g., localhost:3000 or 192.168.1.100:3000)</label>
+                <input type="text" id="serverInput" placeholder="localhost:3000" value="localhost:3000" />
+            </div>
+            <div class="role-buttons">
+                <button class="role-btn active" onclick="setRole('host')">Host</button>
+                <button class="role-btn" onclick="setRole('admin')">Admin</button>
+                <button class="role-btn" onclick="setRole('user')">User</button>
+            </div>
+            <input type="text" class="login-input" id="usernameInput" placeholder="Enter your display name" />
+            <input type="password" class="login-input" id="passwordInput" placeholder="Enter password" />
+            <button class="login-btn" onclick="login()">Login</button>
+            <div class="login-error" id="loginError"></div>
+        </div>
+    </div>
+
+    <div class="login-screen" id="waitingRoomScreen" style="display: none;">
+        <div class="login-card">
+            <h1>⏳ Waiting Room</h1>
+            <p style="text-align: center; color: #666; margin-bottom: 20px;">
+                You have been placed in the waiting room.<br>
+                Please wait for an admin to approve your access.
+            </p>
+            <div style="text-align: center; font-size: 48px; margin: 20px 0;">⏳</div>
+            <p style="text-align: center; color: #999; font-size: 14px;">
+                Your chat access is temporarily blocked.
+            </p>
+            <button class="login-btn" onclick="logout()" style="margin-top: 20px;">Exit</button>
+        </div>
+    </div>
+
+    <div class="container" id="container">
+        <div class="top-bar">
+            <div>
+                <div class="user-info" id="userDisplay"></div>
+                <div class="user-role" id="roleDisplay"></div>
+            </div>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+
+        <div class="main-content">
+            <div class="chat-window">
+                <div class="chat-header">🌟 Group Chat</div>
+                <div class="messages" id="messages"></div>
+                <div class="input-section">
+                    <div class="input-controls">
+                        <input type="text" id="messageInput" placeholder="Type a message..." />
+                        <button onclick="sendMessage()">Send</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <div class="sidebar-panel" id="passwordPanel" style="display: none;">
+                    <div class="panel-header">🔐 Manage Passwords</div>
+                    <div class="panel-content">
+                        <div class="password-input-group">
+                            <select id="roleSelect">
+                                <option value="admin">Admin Password</option>
+                                <option value="user">User Password</option>
+                            </select>
+                            <button onclick="generatePassword()">Generate</button>
+                        </div>
+                        <div class="password-list" id="passwordList"></div>
+                    </div>
+                </div>
+
+                <div class="sidebar-panel" id="namePanel" style="display: none;">
+                    <div class="panel-header">👤 Manage Names</div>
+                    <div class="panel-content">
+                        <div id="nameList"></div>
+                    </div>
+                </div>
+
+                <div class="sidebar-panel">
+                    <div class="panel-header">👥 Online Users</div>
+                    <div class="panel-content">
+                        <div class="user-list" id="userList"></div>
+                    </div>
+                </div>
+
+                <div class="sidebar-panel" id="waitingRoomPanel" style="display: none;">
+                    <div class="panel-header">⏳ Waiting Room</div>
+                    <div class="panel-content">
+                        <div class="user-list" id="waitingRoomList"></div>
+                    </div>
+                </div>
+
+                <div class="sidebar-panel" id="frozenUsersPanel" style="display: none;">
+                    <div class="panel-header">❄️ Frozen Users</div>
+                    <div class="panel-content">
+                        <div class="user-list" id="frozenUsersList"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+        let currentRole = 'host';
+        let ws = null;
+        let serverAddress = 'localhost:3000';
+        
+        const passwords = {
+            host: 'host123'
+        };
+
+        const sharedData = {
+            messages: [],
+            userAccounts: {},
+            users: [],
+            waitingRoom: [],
+            frozenUsers: [],
+            passwords: {
+                host: 'host123',
+                admin: [],
+                user: ['LHS']
+            }
+        };
+
+        function connectWebSocket() {
+            const protocol = 'wss'; // Always use secure WebSocket for deployed servers
+            const url = `${protocol}://${serverAddress}`;
+
+            console.log('Connecting to:', url);
+            ws = new WebSocket(url);
+
+            ws.onopen = () => {
+                console.log('Connected to server');
+                updateConnectionStatus(true);
+                // Request latest data immediately
+                setTimeout(() => {
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        console.log('Requesting data sync...');
+                    }
+                }, 100);
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+
+                if (data.type === 'init') {
+                    Object.assign(sharedData, data.data);
+                    console.log('Received server data:', sharedData);
+                    updatePasswordList();
+                    updateUserList();
+                    updateWaitingRoom();
+                    updateFrozenUsers();
+                } else if (data.type === 'messageUpdate') {
+                    sharedData.messages = data.messages;
+                    renderMessages();
+                } else if (data.type === 'usersUpdate') {
+                    sharedData.users = data.users;
+                    updateUserList();
+                } else if (data.type === 'accountsUpdate') {
+                    sharedData.userAccounts = data.accounts;
+                    updateNameList();
+                } else if (data.type === 'passwordsUpdate') {
+                    sharedData.passwords = data.passwords;
+                    updatePasswordList();
+                } else if (data.type === 'waitingRoomUpdate') {
+                    sharedData.waitingRoom = data.waitingRoom;
+                    updateWaitingRoom();
+                } else if (data.type === 'frozenUsersUpdate') {
+                    sharedData.frozenUsers = data.frozenUsers;
+                    updateFrozenUsers();
+                } else if (data.type === 'userKicked') {
+                    if (currentUser && currentUser.id === data.userId) {
+                        // Hide main chat, show waiting room screen
+                        document.getElementById('container').style.display = 'none';
+                        document.getElementById('waitingRoomScreen').style.display = 'flex';
+                    }
+                } else if (data.type === 'userFrozen') {
+                    if (currentUser && currentUser.id === data.userId) {
+                        alert('Your chat has been frozen by an admin!');
+                    }
+                } else if (data.type === 'userUnfrozen') {
+                    if (currentUser && currentUser.id === data.userId) {
+                        alert('Your chat has been unfrozen!');
+                    }
+                } else if (data.type === 'userApproved') {
+                    if (currentUser && currentUser.id === data.userId) {
+                        // Hide waiting room, show main chat
+                        document.getElementById('waitingRoomScreen').style.display = 'none';
+                        document.getElementById('container').style.display = 'flex';
+                        alert('You have been approved! Welcome back to the chat.');
+                    }
+                } else if (data.type === 'userRejected') {
+                    if (currentUser && currentUser.id === data.userId) {
+                        alert('You have been rejected. Logging out...');
+                        logout();
+                    }
+                }
+            };
+
+            ws.onclose = () => {
+                console.log('Disconnected from server');
+                updateConnectionStatus(false);
+                setTimeout(connectWebSocket, 3000);
+            };
+
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                updateConnectionStatus(false);
+            };
+        }
+
+        function updateConnectionStatus(connected) {
+            const status = document.getElementById('connectionStatus');
+            if (connected) {
+                status.textContent = '🟢 Connected';
+                status.className = 'connection-status connected';
+            } else {
+                status.textContent = '🔴 Disconnected';
+                status.className = 'connection-status disconnected';
+            }
+        }
+
+        function send(message) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify(message));
+            }
+        }
+
+        function setRole(role) {
+            currentRole = role;
+            document.querySelectorAll('.role-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        function login() {
+            serverAddress = document.getElementById('serverInput').value.trim() || 'localhost:3000';
+            const displayName = document.getElementById('usernameInput').value.trim();
+            const password = document.getElementById('passwordInput').value.trim();
+            const errorDiv = document.getElementById('loginError');
+
+            if (!displayName) {
+                errorDiv.textContent = 'Please enter a display name';
+                return;
+            }
+
+            if (!password) {
+                errorDiv.textContent = 'Please enter a password';
+                return;
+            }
+
+            // Connect to WebSocket first to get latest data
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                connectWebSocket();
+                // Wait for connection
+                setTimeout(() => attemptLogin(displayName, password, errorDiv), 1000);
+            } else {
+                attemptLogin(displayName, password, errorDiv);
+            }
+        }
+
+        function attemptLogin(displayName, password, errorDiv) {
+            // Make sure we have the server address first
+            serverAddress = document.getElementById('serverInput').value.trim() || 'localhost:3000';
+            console.log('Attempting login with server:', serverAddress);
+            
+            let role = null;
+            
+            // Check host password
+            if (currentRole === 'host' && password === passwords.host) {
+                role = 'host';
+            }
+            // Check admin passwords
+            else if (currentRole === 'admin') {
+                const foundPassword = sharedData.passwords.admin.find(p => p === password);
+                if (foundPassword) {
+                    role = 'admin';
+                }
+            }
+            // Check user passwords
+            else if (currentRole === 'user') {
+                const foundPassword = sharedData.passwords.user.find(p => p === password);
+                if (foundPassword) {
+                    role = 'user';
+                }
+            }
+
+            if (!role) {
+                errorDiv.textContent = 'Invalid password for selected role';
+                return;
+            }
+
+            const accountId = password + role;
+
+            if (!sharedData.userAccounts[accountId]) {
+                send({
+                    type: 'addAccount',
+                    accountId: accountId,
+                    account: { name: displayName, role: role, password: password }
+                });
+                sharedData.userAccounts[accountId] = { name: displayName, role: role, password: password };
+            }
+
+            currentUser = {
+                id: accountId,
+                name: sharedData.userAccounts[accountId].name,
+                role: role,
+                password: password
+            };
+
+            send({ type: 'addUser', user: currentUser });
+            sharedData.users.push(currentUser);
+
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('container').style.display = 'flex';
+            document.getElementById('userDisplay').textContent = sharedData.userAccounts[accountId].name;
+            document.getElementById('roleDisplay').textContent = `Role: ${role.toUpperCase()}`;
+
+            if (role === 'host') {
+                document.getElementById('passwordPanel').style.display = 'flex';
+                document.getElementById('namePanel').style.display = 'flex';
+            } else if (role === 'admin') {
+                document.getElementById('namePanel').style.display = 'flex';
+            }
+
+            updateUserList();
+            updatePasswordList();
+            updateNameList();
+            renderMessages();
+            updateWaitingRoom();
+            updateFrozenUsers();
+
+            connectWebSocket();
+        }
+
+        function logout() {
+            if (currentUser) {
+                send({ type: 'removeUser', userId: currentUser.id });
+                sharedData.users = sharedData.users.filter(u => u.id !== currentUser.id);
+            }
+            currentUser = null;
+
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('container').style.display = 'none';
+            document.getElementById('waitingRoomScreen').style.display = 'none';
+            document.getElementById('usernameInput').value = '';
+            document.getElementById('passwordInput').value = '';
+            document.getElementById('passwordPanel').style.display = 'none';
+            document.getElementById('namePanel').style.display = 'none';
+
+            if (ws) ws.close();
+        }
+
+        function generatePassword() {
+            const role = document.getElementById('roleSelect').value;
+            const password = 'PWD' + Math.random().toString(36).substr(2, 9).toUpperCase();
+            
+            // Add to local array first
+            if (!sharedData.passwords[role]) {
+                sharedData.passwords[role] = [];
+            }
+            sharedData.passwords[role].push(password);
+            
+            // Send to server
+            send({ type: 'generatePassword', role: role, password: password });
+            
+            // Update display immediately
+            updatePasswordList();
+            
+            console.log(`Generated ${role} password: ${password}`);
+        }
+
+        function updatePasswordList() {
+            const list = document.getElementById('passwordList');
+            if (!list) return;
+            
+            list.innerHTML = '';
+            
+            // Make sure arrays exist
+            if (!sharedData.passwords.admin) sharedData.passwords.admin = [];
+            if (!sharedData.passwords.user) sharedData.passwords.user = [];
+
+            sharedData.passwords.admin.forEach(pwd => {
+                const item = document.createElement('div');
+                item.className = 'password-item';
+                item.innerHTML = `
+                    <span>Admin: <span class="password-code">${pwd}</span></span>
+                    <button onclick="removePassword('admin', '${pwd}')" style="background: #FF6B6B; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">×</button>
+                `;
+                list.appendChild(item);
+            });
+
+            sharedData.passwords.user.forEach(pwd => {
+                const item = document.createElement('div');
+                item.className = 'password-item';
+                item.innerHTML = `
+                    <span>User: <span class="password-code">${pwd}</span></span>
+                    <button onclick="removePassword('user', '${pwd}')" style="background: #FF6B6B; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">×</button>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function removePassword(role, pwd) {
+            sharedData.passwords[role] = sharedData.passwords[role].filter(p => p !== pwd);
+            send({ type: 'removePassword', role: role, password: pwd });
+            updatePasswordList();
+        }
+
+        function updateNameList() {
+            const list = document.getElementById('nameList');
+            list.innerHTML = '';
+
+            Object.keys(sharedData.userAccounts).forEach(accountId => {
+                const account = sharedData.userAccounts[accountId];
+                const item = document.createElement('div');
+                item.style.cssText = 'background: #f0f0f0; padding: 10px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; margin-bottom: 8px;';
+
+                const nameDisplay = document.createElement('div');
+                nameDisplay.innerHTML = `<strong>${account.name}</strong> (${account.role.toUpperCase()})`;
+
+                const changeBtn = document.createElement('button');
+                changeBtn.textContent = 'Change';
+                changeBtn.style.cssText = 'padding: 6px 12px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold;';
+                changeBtn.onclick = () => showNameChangeDialog(accountId);
+
+                item.appendChild(nameDisplay);
+                item.appendChild(changeBtn);
+                list.appendChild(item);
+            });
+        }
+
+        function showNameChangeDialog(accountId) {
+            const account = sharedData.userAccounts[accountId];
+            const newName = prompt(`Change name for ${account.name}:`, account.name);
+
+            if (newName && newName.trim()) {
+                sharedData.userAccounts[accountId].name = newName.trim();
+                send({
+                    type: 'updateAccount',
+                    accountId: accountId,
+                    account: sharedData.userAccounts[accountId]
+                });
+
+                if (currentUser && currentUser.id === accountId) {
+                    currentUser.name = newName.trim();
+                    document.getElementById('userDisplay').textContent = newName.trim();
+                }
+
+                const userInList = sharedData.users.find(u => u.id === accountId);
+                if (userInList) {
+                    userInList.name = newName.trim();
+                }
+
+                updateNameList();
+                updateUserList();
+                renderMessages();
+            }
+        }
+
+        function updateUserList() {
+            const list = document.getElementById('userList');
+            list.innerHTML = '';
+            sharedData.users.forEach(user => {
+                const item = document.createElement('div');
+                item.className = 'user-item';
+                
+                let actionButtons = '';
+                if (currentUser && (currentUser.role === 'host' || currentUser.role === 'admin')) {
+                    actionButtons = `
+                        <div style="display: flex; gap: 5px; margin-top: 8px;">
+                            <button onclick="kickUser('${user.id}')" style="flex: 1; padding: 4px 8px; background: #FF6B6B; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold;">Kick</button>
+                            <button onclick="freezeUser('${user.id}')" style="flex: 1; padding: 4px 8px; background: #4ECDC4; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold;">Freeze</button>
+                        </div>
+                    `;
+                }
+                
+                item.innerHTML = `
+                    <div class="user-name">${user.name}</div>
+                    <div class="user-role-badge">${user.role.toUpperCase()}</div>
+                    ${actionButtons}
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function updateWaitingRoom() {
+            const panel = document.getElementById('waitingRoomPanel');
+            const list = document.getElementById('waitingRoomList');
+            
+            if (currentUser && (currentUser.role === 'host' || currentUser.role === 'admin')) {
+                panel.style.display = 'flex';
+            }
+            
+            list.innerHTML = '';
+            sharedData.waitingRoom.forEach(user => {
+                const item = document.createElement('div');
+                item.className = 'user-item';
+                item.innerHTML = `
+                    <div class="user-name">${user.name}</div>
+                    <div class="user-role-badge">${user.role.toUpperCase()}</div>
+                    <div style="display: flex; gap: 5px; margin-top: 8px;">
+                        <button onclick="approveUser('${user.id}')" style="flex: 1; padding: 4px 8px; background: #4ECDC4; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold;">Approve</button>
+                        <button onclick="rejectUser('${user.id}')" style="flex: 1; padding: 4px 8px; background: #FF6B6B; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold;">Reject</button>
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function updateFrozenUsers() {
+            const panel = document.getElementById('frozenUsersPanel');
+            const list = document.getElementById('frozenUsersList');
+            
+            if (currentUser && (currentUser.role === 'host' || currentUser.role === 'admin')) {
+                panel.style.display = 'flex';
+            }
+            
+            list.innerHTML = '';
+            sharedData.frozenUsers.forEach(user => {
+                const item = document.createElement('div');
+                item.className = 'user-item';
+                item.innerHTML = `
+                    <div class="user-name">${user.name}</div>
+                    <div class="user-role-badge">${user.role.toUpperCase()}</div>
+                    <button onclick="unfreezeUser('${user.id}')" style="width: 100%; padding: 6px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; margin-top: 8px;">Unfreeze</button>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function kickUser(userId) {
+            send({ type: 'kickUser', userId: userId });
+        }
+
+        function freezeUser(userId) {
+            send({ type: 'freezeUser', userId: userId });
+        }
+
+        function unfreezeUser(userId) {
+            send({ type: 'unfreezeUser', userId: userId });
+        }
+
+        function approveUser(userId) {
+            send({ type: 'approveFromWaiting', userId: userId });
+        }
+
+        function rejectUser(userId) {
+            send({ type: 'rejectFromWaiting', userId: userId });
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+
+            // Check if user is in waiting room
+            if (sharedData.waitingRoom.find(u => u.id === currentUser.id)) {
+                alert('You are in the waiting room. You cannot send messages until approved.');
+                return;
+            }
+
+            // Check if user is frozen
+            if (sharedData.frozenUsers.find(u => u.id === currentUser.id)) {
+                alert('Your chat is frozen by an admin. You cannot send messages.');
+                return;
+            }
+
+            if (message && currentUser) {
+                const now = new Date();
+                const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+                const msgObj = {
+                    id: Date.now(),
+                    senderName: currentUser.name,
+                    senderRole: currentUser.role,
+                    text: message,
+                    time: time,
+                    seenBy: []
+                };
+
+                send({ type: 'addMessage', message: msgObj });
+                sharedData.messages.push(msgObj);
+                input.value = '';
+                input.focus();
+
+                renderMessages();
+
+                // Simulate people seeing it after 20 seconds each
+                const otherUsers = sharedData.users.filter(u => u.id !== currentUser.id);
+                otherUsers.forEach((user, index) => {
+                    setTimeout(() => {
+                        if (!msgObj.seenBy.includes(user.name)) {
+                            msgObj.seenBy.push(user.name);
+                            send({ type: 'updateSeen', messageId: msgObj.id, userName: user.name });
+                            renderMessages();
+                        }
+                    }, (index + 1) * 20000);
+                });
+            }
+        }
+
+        function renderMessages() {
+            const container = document.getElementById('messages');
+            container.innerHTML = '';
+
+            sharedData.messages.forEach(msg => {
+                const messageGroup = document.createElement('div');
+                messageGroup.className = 'message-group';
+
+                const avatar = document.createElement('div');
+                avatar.className = 'sender-avatar';
+                avatar.textContent = msg.senderName.charAt(0);
+
+                const content = document.createElement('div');
+                content.className = 'message-content';
+
+                const nameEl = document.createElement('div');
+                nameEl.className = 'sender-name';
+                nameEl.textContent = msg.senderName;
+
+                const message = document.createElement('div');
+                message.className = 'message';
+
+                const seenText = msg.seenBy.length > 0 ? `Seen by ${msg.seenBy.join(', ')}` : '';
+
+                message.innerHTML = `
+                    <div class="message-text">${msg.text}</div>
+                    <div class="message-time">${msg.time}</div>
+                    <div class="message-status">${seenText}</div>
+                `;
+
+                content.appendChild(nameEl);
+                content.appendChild(message);
+                messageGroup.appendChild(avatar);
+                messageGroup.appendChild(content);
+                container.appendChild(messageGroup);
+            });
+
+            container.scrollTop = container.scrollHeight;
+        }
+
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && document.getElementById('messageInput') === document.activeElement) {
+                sendMessage();
+            }
+        });
+
+        // Initialize
+        // Don't connect on page load - wait for login
+        // connectWebSocket();
+    </script>
+</body>
+</html>
