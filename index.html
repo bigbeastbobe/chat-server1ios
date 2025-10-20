@@ -272,6 +272,45 @@
             -webkit-overflow-scrolling: touch;
         }
         
+        .typing-indicator {
+            padding: 8px 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-top: 1px solid rgba(255, 0, 0, 0.2);
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.7);
+            min-height: 32px;
+            display: flex;
+            align-items: center;
+            font-style: italic;
+        }
+        
+        .typing-indicator.hidden {
+            display: none;
+        }
+        
+        .typing-dots {
+            display: inline-block;
+            margin-left: 5px;
+        }
+        
+        .typing-dots span {
+            animation: blink 1.4s infinite;
+            display: inline-block;
+        }
+        
+        .typing-dots span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .typing-dots span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        
+        @keyframes blink {
+            0%, 60%, 100% { opacity: 0.3; }
+            30% { opacity: 1; }
+        }
+        
         .message-group {
             display: flex;
             gap: 8px;
@@ -825,6 +864,9 @@
             <div class="chat-window">
                 <div class="chat-header">🌟 Group Chat</div>
                 <div class="messages" id="messages"></div>
+                <div class="typing-indicator hidden" id="typingIndicator">
+                    <span id="typingText"></span>
+                </div>
                 <div class="emoji-picker" id="emojiPicker"></div>
                 <div class="input-section">
                     <button class="input-btn" onclick="toggleEmojiPicker()" title="Add Emoji">😊</button>
@@ -954,8 +996,11 @@
                 host: 'host123',
                 admin: [],
                 user: ['LHS']
-            }
+            },
+            typingUsers: []
         };
+
+        let typingTimeout = null;
 
         // ===== PARTICLE ANIMATION =====
         const canvas = document.getElementById('particles-canvas');
@@ -1204,6 +1249,9 @@
                 } else if (data.type === 'frozenUsersUpdate') {
                     sharedData.frozenUsers = data.frozenUsers;
                     updateFrozenUsers();
+                } else if (data.type === 'typingUpdate') {
+                    sharedData.typingUsers = data.typingUsers;
+                    updateTypingIndicator();
                 } else if (data.type === 'userKicked') {
                     if (currentUser && currentUser.id === data.userId) {
                         document.getElementById('container').style.display = 'none';
@@ -1613,6 +1661,9 @@
             const input = document.getElementById('messageInput');
             const message = input.value.trim();
 
+            // Stop typing indicator
+            stopTyping();
+
             if (sharedData.waitingRoom.find(u => u.id === currentUser.id)) {
                 alert('You are in the waiting room. You cannot send messages until approved.');
                 return;
@@ -1654,6 +1705,64 @@
                     }, (index + 1) * 20000);
                 });
             }
+        }
+
+        function handleTyping() {
+            if (!currentUser) return;
+
+            // Send typing indicator
+            send({ type: 'userTyping', userId: currentUser.id, userName: currentUser.name });
+
+            // Clear existing timeout
+            if (typingTimeout) {
+                clearTimeout(typingTimeout);
+            }
+
+            // Set timeout to stop typing after 3 seconds
+            typingTimeout = setTimeout(() => {
+                stopTyping();
+            }, 3000);
+        }
+
+        function stopTyping() {
+            if (!currentUser) return;
+            
+            if (typingTimeout) {
+                clearTimeout(typingTimeout);
+                typingTimeout = null;
+            }
+            
+            send({ type: 'userStoppedTyping', userId: currentUser.id });
+        }
+
+        function updateTypingIndicator() {
+            const indicator = document.getElementById('typingIndicator');
+            const typingText = document.getElementById('typingText');
+            
+            // Filter out current user from typing list
+            const othersTyping = sharedData.typingUsers.filter(name => 
+                currentUser && name !== currentUser.name
+            );
+            
+            if (othersTyping.length === 0) {
+                indicator.classList.add('hidden');
+                return;
+            }
+            
+            indicator.classList.remove('hidden');
+            
+            let text = '';
+            if (othersTyping.length === 1) {
+                text = `${othersTyping[0]} is typing`;
+            } else if (othersTyping.length === 2) {
+                text = `${othersTyping[0]} and ${othersTyping[1]} are typing`;
+            } else if (othersTyping.length === 3) {
+                text = `${othersTyping[0]}, ${othersTyping[1]}, and ${othersTyping[2]} are typing`;
+            } else {
+                text = `${othersTyping.length} people are typing`;
+            }
+            
+            typingText.innerHTML = text + '<span class="typing-dots"><span>.</span><span>.</span><span>.</span></span>';
         }
 
         function renderMessages() {
@@ -1710,6 +1819,11 @@
             if (e.key === 'Enter' && document.getElementById('messageInput') === document.activeElement) {
                 sendMessage();
             }
+        });
+
+        // Handle typing indicator
+        document.getElementById('messageInput').addEventListener('input', function() {
+            handleTyping();
         });
 
         // Press "/" to focus message input
